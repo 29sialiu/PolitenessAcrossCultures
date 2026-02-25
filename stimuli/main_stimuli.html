@@ -48,7 +48,7 @@
     // Initialize a timeline (just an empty array)
     var timeline = [];
 
-    for (var i = 0; i < 1; i++) {
+    for (var i = 0; i < data.length/2; i++) {
         var trial = {
             type: jsPsychHtmlSliderResponse,
             stimulus: '<p class="stimulus">' + data[2*i]['scenarios'].replace("[modifier]", modifier_list[(i+participant_condition)%5]) + '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(data[2*i]['question']) + '</b></p>',
