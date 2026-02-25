@@ -29,13 +29,11 @@
     // Initialize the jsPsych object (possibly with arguments: https://www.jspsych.org/7.3/reference/jspsych/)
     var jsPsych = initJsPsych({
         show_progress_bar: true,
-        on_trial_finish: function() {
-            write_data_to_server()
         }
 
     })
     var modifier_list = ['slightly', 'kind of', 'quite', 'very', 'extremely']
-    var participant_condition = parseInt(subject_id,36) %5
+    
 
     // Define `url_write_data_php` and `output_filename` for the `write_data_to_server` function
     var url_experiment_dir = "https://18.18.93.98:8004/"
@@ -45,6 +43,11 @@
         subject_id = jsPsych.randomization.randomID(10);
         /* console.log(`subject_id randomly assigned: ${subject_id}`); */
     }
+
+    var participant_condition = parseInt(subject_id,36) %5
+
+    const filename = `${subject_id}.csv`;
+    
     var output_filename = `data/subject_${subject_id}.json`;
     // /* console.log(`Data will be saved to: ${url_experiment_dir + output_filename}`); */
 
@@ -143,16 +146,26 @@
         button_label: 'Return to Prolific',
         on_finish: function() {
 
-            write_data_to_server()
             window.open('https://app.prolific.com/submissions/complete?cc=CW5DH5TQ&PROLIFIC_PID=' + subject_id)
         }
     }
 
+    const save_data = {
+      type: jsPsychPipe,
+      action: "save",
+      experiment_id: "m1ChKKyj3GzT",
+      filename: filename,
+      data_string: () => jsPsych.data.get().csv()
+    };
+    
     final_timeline.push(debrief)
+
+    final_timeline.push(save_data)
+
+    
 
     // // Run the timeline
     jsPsych.run(final_timeline);
-    write_data_to_server()
 </script>
 
 </html>
