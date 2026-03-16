@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 
@@ -14,9 +13,6 @@
     <script src="https://unpkg.com/@jspsych/plugin-external-html@1.1.3"></script>
     <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.3"></script>
     <script src="https://unpkg.com/@jspsych/plugin-survey-multi-choice@2.0.0"></script>
-
-    <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
-    
     <script src='https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js'></script>
     <script src="util.js"></script>
     <script src="stimuli_en/scenarios.js"></script>
@@ -29,9 +25,41 @@
     // Initialize the jsPsych object (possibly with arguments: https://www.jspsych.org/7.3/reference/jspsych/)
     var jsPsych = initJsPsych({
         show_progress_bar: true,
+        on_trial_finish: function() {
+            write_data_to_server()
+        }
+
     })
-    var modifier_list = ['slightly', 'kind of', 'quite', 'very', 'extremely']
-    
+
+    var participant_condition = parseInt(subject_id,36) %5
+    var modifier = ['slightly', 'kind of', 'quite', 'very', 'extremely'] //list of modifiers
+    var predicate = [0, 1, 2, 3] //index of the predicate
+
+    //divides data up by predicate
+    var scenarios_by_predicate = {
+        cold: data.slice(0,10),
+        loud: data.slice(10, 20),
+        messy: data.slice(20, 30),
+        long: data.slice(30, 40)
+    };
+
+    var predicate_names = ['cold', 'loud', 'messy', 'long'];
+
+    var selected_pairs = [];
+
+    //for each modifier, selects 2 predicates at random
+    modifier.forEach(function(m){
+        var preds = jsPsych.randomization.sampleWithoutReplacement(predicate, 2);
+
+        preds.forEach(function(p){
+            selected_pairs.push({
+                modifier: m,
+                predicate: p
+            });
+        });
+    });
+
+    var vignette = Math.floor(Math.random() * 5); //picks 1 of 5 vignettes for each participant
 
     // Define `url_write_data_php` and `output_filename` for the `write_data_to_server` function
     var url_experiment_dir = "https://18.18.93.98:8004/"
@@ -41,51 +69,63 @@
         subject_id = jsPsych.randomization.randomID(10);
         /* console.log(`subject_id randomly assigned: ${subject_id}`); */
     }
-
-    var participant_condition = parseInt(subject_id,36) %5
-
-    const filename = `${subject_id}.csv`;
-    
     var output_filename = `data/subject_${subject_id}.json`;
     // /* console.log(`Data will be saved to: ${url_experiment_dir + output_filename}`); */
 
-    // Initialize a timeline (just an empty array)
     var timeline = [];
 
-    for (var i = 0; i < data.length/2; i++) {
+    //for (var i = 0; i < selected_pairs.length; i++) {
+    for (var i = 0; i < selected_pairs.length; i++) {
+
+        var m = selected_pairs[i].modifier;
+        var p = selected_pairs[i].predicate;
+        var pn = predicate_names[p]; //this is just for accessing scenarios_by_predicate
+
+        //low impos with modifier
         var trial = {
             type: jsPsychHtmlSliderResponse,
-            stimulus: '<p class="stimulus">' + data[2*i]['scenarios'].replace("[modifier]", modifier_list[(i+participant_condition)%5]) + '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(data[2*i]['question']) + '</b></p>',
+            stimulus: '<p class="stimulus">' + scenarios_by_predicate[pn][vignette*2]["scenarios"].replace("[modifier]", m) +
+                 '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(scenarios_by_predicate[pn][vignette*2]["question"]) + '</b></p>',
             require_movement: true,
-            labels: [data[2*i]['left_label'], data[2*i]['right_label']],
+            labels: [scenarios_by_predicate[pn][vignette*2]['left_label'], scenarios_by_predicate[pn][vignette*2]['right_label']],
             group: i
-        };
+        }
         timeline.push(trial);
+
+        //low impos without modifier
         var trial = {
             type: jsPsychHtmlSliderResponse,
-            stimulus: '<p class="stimulus">' + data[2*i]['scenarios'].replace("[modifier]",'') + '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(data[2*i]['question']) + '</b></p>',
+            stimulus: '<p class="stimulus">' + scenarios_by_predicate[pn][vignette*2]["scenarios"].replace("[modifier]", "") +
+                 '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(scenarios_by_predicate[pn][vignette*2]["question"]) + '</b></p>',
             require_movement: true,
-            labels: [data[2*i]['left_label'], data[2*i]['right_label']],
+            labels: [scenarios_by_predicate[pn][vignette*2]['left_label'], scenarios_by_predicate[pn][vignette*2]['right_label']],
             group: i
-        };
+        }
         timeline.push(trial);
+
+        //high impos with modifier
         var trial = {
             type: jsPsychHtmlSliderResponse,
-            stimulus: '<p class="stimulus">' + data[2*i+1]['scenarios'].replace("[modifier]",  modifier_list[(i+participant_condition)%5]) + '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(data[2*i+1]['question']) + '</b></p>',
+            stimulus: '<p class="stimulus">' + scenarios_by_predicate[pn][vignette*2+1]["scenarios"].replace("[modifier]", m) +
+                 '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(scenarios_by_predicate[pn][vignette*2]["question"]) + '</b></p>',
             require_movement: true,
-            labels: [data[2*i+1]['left_label'], data[2*i+1]['right_label']],
+            labels: [scenarios_by_predicate[pn][vignette*2+1]['left_label'], scenarios_by_predicate[pn][vignette*2+1]['right_label']],
             group: i
-        };
+        }
         timeline.push(trial);
+
+        //high impos without modifier
         var trial = {
             type: jsPsychHtmlSliderResponse,
-            stimulus: '<p class="stimulus">' + data[2*i+1]['scenarios'].replace("[modifier]", '') + '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(data[2*i+1]['question']) + '</b></p>',
+            stimulus: '<p class="stimulus">' + scenarios_by_predicate[pn][vignette*2+1]["scenarios"].replace("[modifier]", "") +
+                 '</p><p class="scale">' + '<b>' + capitalizeFirstLetter(scenarios_by_predicate[pn][vignette*2]["question"]) + '</b></p>',
             require_movement: true,
-            labels: [data[2*i+1]['left_label'], data[2*i+1]['right_label']],
+            labels: [scenarios_by_predicate[pn][vignette*2+1]['left_label'], scenarios_by_predicate[pn][vignette*2+1]['right_label']],
             group: i
-        };
+        }
         timeline.push(trial);
     }
+
     function shuffleWithMinDistance(trials, minDist) {
         let shuffled, valid = false;
         count=0
@@ -110,10 +150,6 @@
     //concatenate into single timeline but same group can't be adjacent
     timeline=shuffleWithMinDistance(timeline,3)
 
-    // 👇 ADD THIS LINE FOR TESTING
-    timeline = timeline.slice(0, 1)
-    
-    // alternate between timeline and timeline2
     var consent = {
         type: jsPsychExternalHtml,
         url: "stimuli_en/consent.html",
@@ -136,6 +172,7 @@
     }
 
     var final_timeline = [consent].concat([instructions], timeline, [country]);
+    
 
     var debrief = {
         type: jsPsychSurveyHtmlForm,
@@ -144,26 +181,17 @@
         button_label: 'Return to Prolific',
         on_finish: function() {
 
+            write_data_to_server()
             window.open('https://app.prolific.com/submissions/complete?cc=CW5DH5TQ&PROLIFIC_PID=' + subject_id)
         }
     }
 
-    const save_data = {
-      type: jsPsychPipe,
-      action: "save",
-      experiment_id: "m1ChKKyj3GzT",
-      filename: filename,
-      data_string: () => jsPsych.data.get().csv()
-    };
-    
     final_timeline.push(debrief)
 
-    final_timeline.push(save_data)
-
-    
-
-    // // Run the timeline
+    // Run the timeline
     jsPsych.run(final_timeline);
+    write_data_to_server()
+    
 </script>
 
 </html>
